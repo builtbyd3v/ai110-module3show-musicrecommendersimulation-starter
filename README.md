@@ -17,17 +17,36 @@ Replace this paragraph with your own summary of what your version does.
 
 ## How The System Works
 
-Explain your design in plain language.
+Real platforms like Spotify mostly blend two approaches. **Collaborative
+filtering** predicts what you'll like from *other users'* behavior: likes,
+skips, playlist co-occurrence, listening history, even without knowing
+anything about the song itself. **Content-based filtering** predicts from
+the *song's own* attributes: genre, mood, tempo, energy, matched against
+a profile built from what you've liked before. Collaborative filtering finds
+patterns humans wouldn't think to encode by hand, but needs a large user base
+and struggles with new/unpopular songs ("cold start"). Content-based works
+from day one with no other users, but stays inside your stated taste and
+won't surprise you the way "people like you also liked X" can.
 
-Some prompts to answer:
+This simulation is **content-based only**: no other users, no play history,
+just song attributes scored against one stated profile.
 
-- What features does each `Song` use in your system
-  - For example: genre, mood, energy, tempo
-- What information does your `UserProfile` store
-- How does your `Recommender` compute a score for each song
-- How do you choose which songs to recommend
-
-You can include a simple diagram or bullet list if helpful.
+- `Song` features: `genre`, `mood`, `energy`, `tempo_bpm`, `valence`,
+  `danceability`, `acousticness` (see `data/songs.csv`)
+- `UserProfile` stores: `favorite_genre`, `favorite_mood`, `target_energy`,
+  `likes_acoustic`
+- **Scoring rule** (per song): exact match on `genre` and `mood` each add
+  fixed points (genre weighted higher since it's a stronger taste signal
+  than mood); `energy` is scored by closeness to `target_energy`
+  (`1 - abs(song.energy - target_energy)`) rather than "higher is better",
+  since a user wanting calm music shouldn't get the most intense song in the
+  catalog; `acousticness` adds a small bonus only when `likes_acoustic` is
+  true.
+- **Ranking rule**: score every song, sort descending, return the top `k`.
+  The scoring rule handles *one* song in isolation; the ranking rule turns
+  many individual scores into an ordered list. You need both because a
+  score alone doesn't tell you how a song compares to the rest of the
+  catalog.
 
 ---
 
