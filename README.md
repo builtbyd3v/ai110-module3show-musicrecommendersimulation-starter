@@ -115,28 +115,24 @@ You can add more tests in `tests/test_recommender.py`.
 ## Sample Recommendation Output
 
 Output of `python -m src.main` with the default profile
-`{"genre": "pop", "mood": "happy", "energy": 0.8}`:
+`{"genre": "pop", "mood": "happy", "energy": 0.8}` (`balanced` mode):
 
 ```
 Loaded songs: 18
 
-Top recommendations:
+Mode: balanced
 
-Sunrise City - Score: 3.98
-Because: genre match (+2.0), mood match (+1.0), energy similarity (+0.98)
-
-Gym Hero - Score: 2.87
-Because: genre match (+2.0), energy similarity (+0.87)
-
-Rooftop Lights - Score: 1.96
-Because: mood match (+1.0), energy similarity (+0.96)
-
-Concrete Bloom - Score: 1.00
-Because: energy similarity (+1.00)
-
-Night Drive Loop - Score: 0.95
-Because: energy similarity (+0.95)
+Title          | Score | Reasons
+---------------+-------+-------------------------------------------------------------------
+Sunrise City   | 3.98  | genre match (+2.0), mood match (+1.0), energy similarity (+0.98)
+Gym Hero       | 2.87  | genre match (+2.0), energy similarity (+0.87)
+Rooftop Lights | 1.96  | mood match (+1.0), energy similarity (+0.96)
+Concrete Bloom | 1.00  | energy similarity (+1.00)
+Riot Fuel      | 0.90  | energy similarity (+0.90)
 ```
+
+Note this replaces `Night Drive Loop` (the un-penalized #5 result) with `Riot
+Fuel`, see **Bonus Challenges** below for why.
 
 **Screenshot or video** *(optional)*: <!-- Insert a screenshot or demo video link here -->
 
@@ -164,12 +160,12 @@ Library Rain - Score: 3.95
 Because: genre match (+2.0), mood match (+1.0), energy similarity (+0.95)
 Midnight Coding - Score: 3.88
 Because: genre match (+2.0), mood match (+1.0), energy similarity (+0.88)
-Focus Flow - Score: 2.90
-Because: genre match (+2.0), energy similarity (+0.90)
 Spacewalk Thoughts - Score: 1.98
 Because: mood match (+1.0), energy similarity (+0.98)
 Tears in Neon - Score: 1.00
 Because: energy similarity (+1.00)
+Dust Road Home - Score: 0.97
+Because: energy similarity (+0.97)
 
 === Deep Intense Rock -> {'genre': 'rock', 'mood': 'intense', 'energy': 0.9} ===
 Storm Runner - Score: 3.99
@@ -200,6 +196,8 @@ The first three profiles "feel" right: each top result is exactly the genre/mood
 
 The fourth profile is a contradiction on purpose: "metal" (usually high energy) paired with mood "sad" (usually low energy) and a high target energy. The system doesn't notice the contradiction, it just adds up points. `Iron Collapse` wins on genre plus energy while completely ignoring mood. `Tears in Neon`, the one song that actually matches the stated mood, drops to second because its energy (0.30) is far from the requested 0.9. A user who typed "sad" probably wanted `Tears in Neon`, not an aggressive metal track.
 
+(Note: this block was regenerated after the Bonus Challenges below added a diversity penalty. Chill Lofi previously included `Focus Flow`, LoRoom's second lofi/chill-adjacent song, at #3; it now drops out in favor of `Dust Road Home` because `Focus Flow` shares an artist with the already-picked `Midnight Coding` and would be the catalog's third lofi pick in a row. The other three profiles were unaffected since none of their top 5 shared an artist or tripled up on genre.)
+
 ### Weight-shift experiment: genre 2.0 → 1.0, energy ×2
 
 Same High-Energy Pop profile, ranking barely moved (still Sunrise City, Gym Hero, Rooftop Lights, Riot Fuel, Storm Runner in that order) with the top-3 gap much tighter, from 2.06 points down to 1.12.
@@ -221,6 +219,48 @@ Because: energy similarity (+1.84)
 ```
 
 `Tears in Neon`, the only song matching the requested mood, fell out of the top 5 entirely, replaced by four songs that match nothing but raw energy (not even genre). Doubling the energy weight didn't make this profile's results more accurate, it made them worse: the list is now just "loudest songs available" with taste signals drowned out. This change was reverted; the shipped system still uses genre 2.0 / mood 1.0 / energy ×1.
+
+---
+
+## Bonus Challenges
+
+Four stretch features on top of the core system, all in `src/recommender.py` /
+`src/main.py`, all backward compatible (existing tests and the default
+`balanced`-mode profile still behave the same on the shared genre/mood/energy
+axes):
+
+1. **Advanced song features.** Added 5 new columns to `data/songs.csv`:
+   `popularity` (0-100), `release_decade`, `detailed_mood_tags`
+   (semicolon-separated), `instrumentalness`, `language`. `Song` and
+   `UserProfile` grew matching fields (all optional, default `None`/neutral,
+   so old code paths that don't set them are untouched). `score_song()` /
+   `Recommender._score()` add bonus points for each one the user actually
+   specifies: popularity/instrumentalness by closeness (up to +0.5 each),
+   decade and language by exact match (+0.5 each), mood tags by overlap
+   count (+0.5 per shared tag). See the advanced-profile example run in
+   `ai_interactions.md`.
+
+2. **Multiple scoring modes (Strategy pattern).** `SCORING_MODES` is a dict
+   of named genre/mood/energy weight presets (`balanced`, `genre-first`,
+   `mood-first`, `energy-focused`); `score_song()`, `recommend_songs()`, and
+   `Recommender.recommend()` all take a `mode` argument that looks up a
+   preset instead of branching on if/elif. Switch modes from the CLI:
+   `python -m src.main mood-first`. See `ai_interactions.md` for why a
+   dict-of-presets was chosen over a full class-per-strategy hierarchy.
+
+3. **Diversity penalty.** `recommend_songs()` (the functional path used by
+   the CLI) now builds its top-`k` list greedily: after each pick, any
+   remaining song by the same artist takes a `-1.5` penalty, and any song
+   from a genre already picked twice takes a `-0.75` penalty, before the
+   next pick is chosen. This only touches `recommend_songs()`, not the OOP
+   `Recommender.recommend()` that `tests/test_recommender.py` exercises,
+   since that test's fixture deliberately reuses one artist across both
+   songs and asserts `k=2` results back.
+
+4. **Visual summary table.** `main.py` has a small stdlib-only
+   `_format_table()` helper (no new dependency) that renders the CLI output
+   as an aligned ASCII table with Title / Score / Reasons columns instead of
+   one print per line.
 
 ---
 
