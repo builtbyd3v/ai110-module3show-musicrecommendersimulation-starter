@@ -2,60 +2,81 @@
 
 ## 1. Model Name  
 
-Give your model a short, descriptive name.  
-Example: **VibeFinder 1.0**  
+**VibeMatch 1.0**
 
 ---
 
 ## 2. Intended Use  
 
-Describe what your recommender is designed to do and who it is for. 
+VibeMatch takes a simple taste profile (a genre, a mood, and a target
+energy level) and returns a ranked top-5 list of songs from a small
+catalog, with a plain-English reason for each pick.
 
-Prompts:  
+It assumes the user can describe their taste in exactly those three terms.
+It does not learn from listening history, likes, or skips, and it does not
+know anything about a user beyond what's typed in for that one request.
 
-- What kind of recommendations does it generate  
-- What assumptions does it make about the user  
-- Is this for real users or classroom exploration  
+This is a classroom exploration project, not a product. It is not
+intended for real users, real catalogs, or any use where a wrong or biased
+recommendation would matter (for example, don't wire this into anything
+that affects what content real people see without a human reviewing it
+first).
 
 ---
 
 ## 3. How the Model Works  
 
-Explain your scoring approach in simple language.  
+Every song in the catalog gets a score, starting at 0. If the song's
+genre matches what the user asked for, it gets 2 points. If the mood
+matches, it gets 1 more point. Then, for energy, the closer the song's
+energy is to the user's target energy, the more points it gets, up to 1
+extra point for a near-perfect match. A song can also get a small bonus
+if the user says they like acoustic music and the song is acoustic.
 
-Prompts:  
+Genre is worth twice as much as mood on purpose. In testing, genre felt
+like the stronger, more stable signal of the two.
 
-- What features of each song are used (genre, energy, mood, etc.)  
-- What user preferences are considered  
-- How does the model turn those into a score  
-- What changes did you make from the starter logic  
-
-Avoid code here. Pretend you are explaining the idea to a friend who does not program.
+Once every song has a score, the system sorts them from highest to
+lowest and returns the top 5, along with the specific reasons ("genre
+match," "mood match," "energy similarity") that added up to that score.
 
 ---
 
 ## 4. Data  
 
-Describe the dataset the model uses.  
+The catalog has 18 songs (10 in the starter file, 8 I added). Each song
+has: title, artist, genre, mood, energy, tempo, valence, danceability,
+and acousticness.
 
-Prompts:  
+Genres: pop, lofi, rock, ambient, jazz, synthwave, indie pop, hip-hop,
+classical, folk, metal, r&b, country, punk, electronic. Moods: happy,
+chill, intense, relaxed, moody, focused, energetic, peaceful, nostalgic,
+aggressive, dreamy, uplifting, rebellious, sad.
 
-- How many songs are in the catalog  
-- What genres or moods are represented  
-- Did you add or remove data  
-- Are there parts of musical taste missing in the dataset  
+I only added songs, I didn't remove any starter data.
+
+18 songs is tiny for how many genre/mood combinations exist. Most
+genres only have 1 or 2 songs, so a lot of possible taste profiles have
+no close match in the catalog at all. There's also nothing about the
+actual audio (no lyrics, no real audio analysis) or about the artist
+beyond a name, all attributes are hand-typed numbers.
 
 ---
 
 ## 5. Strengths  
 
-Where does your system seem to work well  
+When a user's stated genre and mood both exist in the catalog together
+(pop/happy, lofi/chill, rock/intense), VibeMatch's top pick matched my
+own intuition every time in testing, see the Evaluation section below.
 
-Prompts:  
+The energy score works the way it's supposed to: it rewards closeness
+to the target, not just "more energy is better," so a user who wants
+calm music doesn't get handed the most intense song in the catalog.
 
-- User types for which it gives reasonable results  
-- Any patterns you think your scoring captures correctly  
-- Cases where the recommendations matched your intuition  
+It's also honest about its reasoning. Because every recommendation comes
+with a plain-language "because" list, it's easy to see exactly why a
+song ranked where it did, which made the bias in Section 6 easy to spot
+in the first place.
 
 ---
 
@@ -77,23 +98,34 @@ What surprised me was the adversarial profile: I expected the contradiction (met
 
 ## 8. Future Work  
 
-Ideas for how you would improve the model next.  
-
-Prompts:  
-
-- Additional features or preferences  
-- Better ways to explain recommendations  
-- Improving diversity among the top results  
-- Handling more complex user tastes  
+- Let the user weight genre vs. mood vs. energy themselves, instead of a
+  fixed 2 / 1 / 1 recipe baked into the code.
+- Flag contradictory profiles (like "sad" plus a high target energy)
+  instead of silently scoring them and returning a confident-looking list.
+- Grow the catalog so most genre/mood pairs actually have a real match,
+  and cap how many songs from the same artist can appear in one top-5
+  list so results don't feel repetitive.
 
 ---
 
 ## 9. Personal Reflection  
 
-A few sentences about your experience.  
+The biggest learning moment was the adversarial test in Phase 4. I
+expected a contradictory profile to just look messy. Instead it revealed
+a real, specific bias: genre quietly outweighs mood every time, and the
+system never says so, it just hands back a confident ranked list either
+way.
 
-Prompts:  
+AI tools were fastest for turning a described scoring rule into working
+code and for generating the CSV rows for new songs. I still had to
+double-check the math by hand (running real profiles and reading the
+score breakdowns) before trusting that "genre 2.0, mood 1.0, energy
+closeness" behaved the way I expected, especially after the weight-shift
+experiment, where the AI-suggested change looked reasonable on paper but
+made results worse in practice.
 
-- What you learned about recommender systems  
-- Something unexpected or interesting you discovered  
-- How this changed the way you think about music recommendation apps  
+What surprised me is how much a tiny, fully-explainable scoring formula
+can still "feel" like a real recommendation, right up until you feed it
+an edge case it wasn't built to handle. If I kept going, I'd want to test
+many more adversarial profiles before trusting this kind of system with
+anything beyond a classroom demo.

@@ -241,10 +241,23 @@ Read and complete `model_card.md`:
 
 [**Model Card**](model_card.md)
 
-Write 1 to 2 paragraphs here about what you learned:
+Recommenders turn data into predictions by picking a few features
+(here: genre, mood, energy), assigning them point values, and adding
+up whichever ones match. There's no magic in it, the "prediction" is
+just arithmetic over whatever the designer decided to weight. That also
+means the designer's weight choices are the product: giving genre twice
+the points of mood wasn't a neutral technical decision, it's a bet about
+what matters most, and that bet shapes every recommendation the system
+makes.
 
-- about how recommenders turn data into predictions
-- about where bias or unfairness could show up in systems like this
+Bias showed up fastest at the seams: a profile that mixed a genre
+associated with high energy and a mood associated with low energy
+exposed that the system trusts genre over mood without ever saying so.
+Real recommenders have the same shape of problem at a much bigger
+scale: whatever the system is built to weight most heavily is what it
+will keep pointing users back toward, whether or not that's actually
+what they meant. See [model_card.md](model_card.md) for the full
+evaluation and bias write-up.
 
 
 
