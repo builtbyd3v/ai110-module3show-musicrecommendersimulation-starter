@@ -48,6 +48,33 @@ just song attributes scored against one stated profile.
   score alone doesn't tell you how a song compares to the rest of the
   catalog.
 
+### Algorithm Recipe (finalized)
+
+`user_prefs = {"genre": "lofi", "mood": "chill", "energy": 0.4}` is the
+example profile used for planning and manual testing.
+
+Per song, starting from 0 points:
+
+- `+2.0` if `song.genre == user_prefs["genre"]`
+- `+1.0` if `song.mood == user_prefs["mood"]`
+- `+ (1 - abs(song.energy - user_prefs["energy"]))` similarity points for
+  energy, so a near-exact energy match is worth close to `+1.0` and a
+  wildly mismatched one is worth close to `0`
+
+Genre outweighs mood 2:1 because in this catalog genre is the stronger,
+more stable taste signal; mood shifts more from song to song within the
+same artist.
+
+**Data flow:** `Input (user_prefs dict)` &rarr; `Process (loop: score_song()
+over every row in songs.csv)` &rarr; `Output (sort by score, return top k)`.
+
+**Known bias:** this recipe over-prioritizes genre. A right-genre song that
+matches nothing else scores 2.0. A wrong-genre song with a perfect mood
+match and a near-perfect energy match tops out just under 2.0 (1.0 mood
+plus almost 1.0 energy). So the wrong-genre song usually loses even when
+it fits the user's mood and energy far better, unless its energy match is
+close to exact.
+
 ---
 
 ## Getting Started
