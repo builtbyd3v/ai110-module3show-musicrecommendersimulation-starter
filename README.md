@@ -144,23 +144,92 @@ Because: energy similarity (+0.95)
 
 ## Experiments You Tried
 
-Use this section to document the experiments you ran. For example:
+### Stress test: four profiles
 
-- What happened when you changed the weight on genre from 2.0 to 0.5
-- What happened when you added tempo or valence to the score
-- How did your system behave for different types of users
+```
+=== High-Energy Pop -> {'genre': 'pop', 'mood': 'happy', 'energy': 0.9} ===
+Sunrise City - Score: 3.92
+Because: genre match (+2.0), mood match (+1.0), energy similarity (+0.92)
+Gym Hero - Score: 2.97
+Because: genre match (+2.0), energy similarity (+0.97)
+Rooftop Lights - Score: 1.86
+Because: mood match (+1.0), energy similarity (+0.86)
+Riot Fuel - Score: 1.00
+Because: energy similarity (+1.00)
+Storm Runner - Score: 0.99
+Because: energy similarity (+0.99)
+
+=== Chill Lofi -> {'genre': 'lofi', 'mood': 'chill', 'energy': 0.3} ===
+Library Rain - Score: 3.95
+Because: genre match (+2.0), mood match (+1.0), energy similarity (+0.95)
+Midnight Coding - Score: 3.88
+Because: genre match (+2.0), mood match (+1.0), energy similarity (+0.88)
+Focus Flow - Score: 2.90
+Because: genre match (+2.0), energy similarity (+0.90)
+Spacewalk Thoughts - Score: 1.98
+Because: mood match (+1.0), energy similarity (+0.98)
+Tears in Neon - Score: 1.00
+Because: energy similarity (+1.00)
+
+=== Deep Intense Rock -> {'genre': 'rock', 'mood': 'intense', 'energy': 0.9} ===
+Storm Runner - Score: 3.99
+Because: genre match (+2.0), mood match (+1.0), energy similarity (+0.99)
+Gym Hero - Score: 1.97
+Because: mood match (+1.0), energy similarity (+0.97)
+Riot Fuel - Score: 1.00
+Because: energy similarity (+1.00)
+Iron Collapse - Score: 0.93
+Because: energy similarity (+0.93)
+Sunrise City - Score: 0.92
+Because: energy similarity (+0.92)
+
+=== Adversarial (genre metal, mood sad, energy 0.9) -> {'genre': 'metal', 'mood': 'sad', 'energy': 0.9} ===
+Iron Collapse - Score: 2.93
+Because: genre match (+2.0), energy similarity (+0.93)
+Tears in Neon - Score: 1.40
+Because: mood match (+1.0), energy similarity (+0.40)
+Riot Fuel - Score: 1.00
+Because: energy similarity (+1.00)
+Storm Runner - Score: 0.99
+Because: energy similarity (+0.99)
+Gym Hero - Score: 0.97
+Because: energy similarity (+0.97)
+```
+
+The first three profiles "feel" right: each top result is exactly the genre/mood/energy combo it asked for (Sunrise City for happy pop, Library Rain for chill lofi, Storm Runner for intense rock). `Sunrise City` beats `Gym Hero` for the pop profile because genre+mood both match (+3.0) even though `Gym Hero` is closer on raw energy, matching genre and mood is worth more than a slightly tighter energy number.
+
+The fourth profile is a contradiction on purpose: "metal" (usually high energy) paired with mood "sad" (usually low energy) and a high target energy. The system doesn't notice the contradiction, it just adds up points. `Iron Collapse` wins on genre plus energy while completely ignoring mood. `Tears in Neon`, the one song that actually matches the stated mood, drops to second because its energy (0.30) is far from the requested 0.9. A user who typed "sad" probably wanted `Tears in Neon`, not an aggressive metal track.
+
+### Weight-shift experiment: genre 2.0 → 1.0, energy ×2
+
+Same High-Energy Pop profile, ranking barely moved (still Sunrise City, Gym Hero, Rooftop Lights, Riot Fuel, Storm Runner in that order) with the top-3 gap much tighter, from 2.06 points down to 1.12.
+
+The bigger effect showed up on the adversarial profile:
+
+```
+=== Adversarial (genre halved, energy doubled) ===
+Iron Collapse - Score: 2.86
+Because: genre match (+1.0), energy similarity (+1.86)
+Riot Fuel - Score: 2.00
+Because: energy similarity (+2.00)
+Storm Runner - Score: 1.98
+Because: energy similarity (+1.98)
+Gym Hero - Score: 1.94
+Because: energy similarity (+1.94)
+Sunrise City - Score: 1.84
+Because: energy similarity (+1.84)
+```
+
+`Tears in Neon`, the only song matching the requested mood, fell out of the top 5 entirely, replaced by four songs that match nothing but raw energy (not even genre). Doubling the energy weight didn't make this profile's results more accurate, it made them worse: the list is now just "loudest songs available" with taste signals drowned out. This change was reverted; the shipped system still uses genre 2.0 / mood 1.0 / energy ×1.
 
 ---
 
 ## Limitations and Risks
 
-Summarize some limitations of your recommender.
-
-Examples:
-
-- It only works on a tiny catalog
-- It does not understand lyrics or language
-- It might over favor one genre or mood
+- 18-song catalog. There's no guarantee a good match for any given profile exists at all.
+- Genre outweighs mood 2:1, so a wrong-genre song can lose to a right-genre song even when it fits the user's mood and energy far better (see the adversarial profile above).
+- No contradiction detection. A profile like `genre=metal, mood=sad, energy=0.9` is internally inconsistent, but the scorer just adds points and returns a confident-looking ranked list anyway.
+- Content-based only, no other users, no play history, no lyrics or audio analysis, no way to learn from skips or replays over time.
 
 You will go deeper on this in your model card.
 

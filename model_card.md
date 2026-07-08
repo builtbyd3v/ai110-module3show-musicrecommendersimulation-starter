@@ -61,29 +61,17 @@ Prompts:
 
 ## 6. Limitations and Bias 
 
-Where the system struggles or behaves unfairly. 
-
-Prompts:  
-
-- Features it does not consider  
-- Genres or moods that are underrepresented  
-- Cases where the system overfits to one preference  
-- Ways the scoring might unintentionally favor some users  
+The scoring recipe weights genre (+2.0) twice as heavily as mood (+1.0), so it systematically favors users whose stated genre exists in the 18-song catalog over users whose mood or vibe is the stronger signal. Testing an adversarial profile (`genre=metal, mood=sad, energy=0.9`) showed the system will confidently rank a high-energy, wrong-mood song above the one song that actually matches the user's stated mood, purely because genre points outweigh a mood-plus-energy combination. The system also has no way to flag an internally contradictory profile ("sad" with a 0.9 energy target); it just scores whatever it's given and returns a ranked list with no warning. Genres and moods not well represented in the 18-song catalog (there's one song per genre in several cases) will get thin, low-confidence recommendations even when a real match doesn't exist. Because this is content-based only, a user's actual taste, likes, skips, replays, is invisible to the system; it can only ever match the profile it's told, so it will happily reinforce whatever genre/mood the user already typed in rather than surfacing something outside that box.
 
 ---
 
 ## 7. Evaluation  
 
-How you checked whether the recommender behaved as expected. 
+Tested four profiles against the 18-song catalog (full terminal output in the README's [Experiments You Tried](README.md#experiments-you-tried) section): **High-Energy Pop** (`genre=pop, mood=happy, energy=0.9`), **Chill Lofi** (`genre=lofi, mood=chill, energy=0.3`), **Deep Intense Rock** (`genre=rock, mood=intense, energy=0.9`), and an **adversarial** profile (`genre=metal, mood=sad, energy=0.9`) chosen specifically to contradict itself.
 
-Prompts:  
+For each of the first three, I checked whether the top result matched my own intuition for that vibe. It did in all three cases: `Sunrise City` for pop/happy, `Library Rain` for lofi/chill, `Storm Runner` for rock/intense. Comparing High-Energy Pop and Chill Lofi shows what the system is actually testing for: the high-energy profile pulls upbeat, danceable tracks (`Sunrise City`, `Gym Hero`) while the low-energy profile pulls the opposite corner of the catalog (`Library Rain`, `Midnight Coding`), same scoring recipe, opposite result, because `energy` is the one numeric axis in the recipe and it's doing real work.
 
-- Which user profiles you tested  
-- What you looked for in the recommendations  
-- What surprised you  
-- Any simple tests or comparisons you ran  
-
-No need for numeric metrics unless you created some.
+What surprised me was the adversarial profile: I expected the contradiction (metal/high-energy paired with mood "sad") to produce a messy or clearly-wrong top result, and it did, but not in the way I expected. `Iron Collapse` (aggressive metal) beat `Tears in Neon` (the only song actually tagged "sad") because 2.0 genre points plus a near-perfect energy match outscored the mood match. The system never notices the profile is self-contradictory; it just picks the highest scorer and moves on. I ran a follow-up weight-shift experiment (genre 2.0 to 1.0, energy points doubled) on this same adversarial profile and the result got worse, not better: `Tears in Neon` fell out of the top 5 entirely, replaced by songs matching nothing but raw energy. That confirmed the 2:1 genre-to-mood weighting, while it does over-favor genre, is doing more good than harm compared to the alternative I tried.
 
 ---
 
